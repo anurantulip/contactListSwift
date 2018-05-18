@@ -8,6 +8,11 @@
 
 import UIKit
 import Alamofire
+enum UIUserInterfaceIdiom : Int {
+    case unspecified
+    case phone
+    case pad
+}
 class ContactList: UIViewController {
     @IBOutlet weak var tblview:UITableView!
     let searchController = UISearchController(searchResultsController: nil)
@@ -15,8 +20,12 @@ class ContactList: UIViewController {
     var contactArray = [Person]()
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Setup the Search Controller
-        searchController.searchResultsUpdater = self
+        
+            navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Z-A", style: .plain, target: self, action: #selector(btnSortAction))
+            self.title = "Contact List"
+           // Setup the Search Controller
+        
+           searchController.searchResultsUpdater = self
         searchController.hidesNavigationBarDuringPresentation = false
         searchController.dimsBackgroundDuringPresentation = false
         tblview.tableHeaderView = searchController.searchBar
@@ -46,23 +55,29 @@ class ContactList: UIViewController {
                 $0.id != id
             }
             self.tblview.reloadData()
+            // Refresh details view
+            if UIDevice.current.userInterfaceIdiom == .pad{
+                self.refreshDetailView()
+            }
         }
     }
     //MARK: - Sort Contact
-    @IBAction func btnSortAction(btn:UIButton){
-        if(btn.titleLabel?.text == "A-Z"){
+    @objc func btnSortAction(){
+    if(navigationItem.rightBarButtonItem?.title == "A-Z"){
             filteredContacts.sort{
                 $0.name < $1.name
             }
-            btn.setTitle("Z-A", for: .normal)
+            navigationItem.rightBarButtonItem?.title = "Z-A"
         }else{
             filteredContacts.sort{
                 $0.name > $1.name
             }
-            btn.setTitle("A-Z", for: .normal)
+            navigationItem.rightBarButtonItem?.title = "A-Z"
         }
         self.tblview.reloadData()
+        
     }
+    
     //MARK: - Load Contact From URL
     func loadData() {
         guard Helper.isConnectedToInternet else{
@@ -79,6 +94,35 @@ class ContactList: UIViewController {
             self.filteredContacts = self.contactArray
             Helper.sharedInstance.hideActivityIndicatory(uiView: self.view)
             self.tblview.reloadData()
+            // Refresh details view
+            if UIDevice.current.userInterfaceIdiom == .pad{
+                self.refreshDetailView()
+            }
+            
+        }
+    }
+    func refreshDetailView(){
+        let indexPath = IndexPath(row: 0, section: 0)
+        self.tblview.selectRow(at: indexPath, animated: true, scrollPosition: .bottom)
+        self.performSegue(withIdentifier: "ShowDetailIdentifier" , sender:self)
+    }
+    // MARK:- Storyboard segue
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        if (segue.identifier == "ShowDetailIdentifier") {
+            let detail: ContactDetails
+            if let navigationController = segue.destination as? UINavigationController {
+                detail = navigationController.topViewController as! ContactDetails
+            } else {
+                detail = segue.destination as! ContactDetails
+            }
+            
+            if let path = tblview.indexPathForSelectedRow {
+                let person: Person = filteredContacts[path.row]
+                detail.contactObj = person
+                let backItem = UIBarButtonItem()
+                backItem.title = ""
+                navigationItem.backBarButtonItem = backItem
+            }
         }
     }
     
@@ -104,18 +148,13 @@ extension ContactList:UITableViewDataSource{
 }
 // MARK: - UITableViewDelegate
 extension ContactList:UITableViewDelegate{
-    // method to run when table view cell is tapped
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let person: Person
-        person = filteredContacts[indexPath.row]
-        let ContactDetails = Helper.storyBoard.instantiateViewController(withIdentifier: "ContactDetails") as! ContactDetails
-            ContactDetails.contactObj = person
-        self.navigationController?.pushViewController(ContactDetails, animated: true)
     }
 }
 
 extension Notification.Name{
     static let deleteContact = Notification.Name("deleteContact")
+    static let loadInitialValue = Notification.Name("loadInitialValue")
 }
 // MARK: - UISearchResultsUpdating Delegate
 extension ContactList: UISearchResultsUpdating {

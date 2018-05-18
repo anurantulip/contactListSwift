@@ -29,8 +29,9 @@ class ContactDetails: UIViewController {
         // Dispose of any resources that can be recreated.
     }
     func loadUI(){
+        navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem:.trash, target: self, action: #selector(btnDeleteAction))
         if let person = contactObj {
-            lblName.text = person.name
+            self.title = person.name
             lblPhone.text = person.phone
             lblWebsite.text = person.website
             lblUsername.text = person.username
@@ -41,16 +42,14 @@ class ContactDetails: UIViewController {
             lblAddressLine2.text = person.address.city + ","+person.address.zipcode
         }
     }
-    @IBAction func btnBackAction(id:UIButton){
-        self.navigationController?.popViewController(animated: true)
-    }
-    @IBAction func btnDeleteAction(id:UIButton){
+    
+    @objc func btnDeleteAction(){
         let alertController = UIAlertController(title: "", message: "Are you sure to delete?", preferredStyle: .alert)
         
         let actionYes = UIAlertAction(title: "YES", style: .default) { (action:UIAlertAction) in
             if let id = self.contactObj?.id {
                 NotificationCenter.default.post(name: .deleteContact, object: nil,userInfo:["id":id])
-                self.navigationController?.popViewController(animated: true)
+                self.backToMasterVc()
             }
         }
         
@@ -62,7 +61,15 @@ class ContactDetails: UIViewController {
         self.present(alertController, animated: true, completion: nil)
         
     }
-
-    
-
+    func backToMasterVc(){
+        if let splitController = self.splitViewController{
+            if splitController.isCollapsed{
+                let detailsNavCntrl = self.parent as! UINavigationController
+                let masterNavcontroler = detailsNavCntrl.parent as! UINavigationController
+                masterNavcontroler.popViewController(animated: true)
+                
+            }
+        }
+    }
 }
+
